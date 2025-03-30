@@ -1,0 +1,24 @@
+syntax = "proto3";
+package rpc;
+
+option go_package = "github.com/Glack134/pc_club/pkg/rpc";
+
+service AdminService {
+    rpc GrantAccess(GrantRequest) returns (Response);
+    rpc RevokeAccess(RevokeRequest) returns (Response);
+}
+
+message GrantRequest {
+  string user_id = 1;
+  string pc_id = 2;
+  int32 minutes = 3;
+}
+
+message RevokeRequest {
+  string pc_id = 1;
+}
+
+message Response {
+  bool success = 1;
+  string message = 2;
+}
