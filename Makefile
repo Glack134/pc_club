@@ -1,5 +1,3 @@
-# Makefile for Gaming Access Control project
-
 BIN_DIR := bin
 PROTO_DIR := pkg/rpc
 PROTO_FILE := $(PROTO_DIR)/admin.proto
@@ -33,9 +31,6 @@ run-client: $(BIN_DIR)/client
 
 test:
 	go test ./...
-
-test-integration:
-    ./integration_test.sh
 
 clean:
 	rm -rf $(BIN_DIR)

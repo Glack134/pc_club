@@ -26,7 +26,7 @@ type GrantRequest struct {
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	PcId          string                 `protobuf:"bytes,2,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
 	Minutes       int32                  `protobuf:"varint,3,opt,name=minutes,proto3" json:"minutes,omitempty"`
-	AuthToken     string                 `protobuf:"bytes,4,opt,name=auth_token,json=authToken,proto3" json:"auth_token,omitempty"` // Добавляем поле для токена
+	AuthToken     string                 `protobuf:"bytes,4,opt,name=auth_token,json=authToken,proto3" json:"auth_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"time"
 
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"gopkg.in/ini.v1"
 )
 
@@ -23,89 +22,103 @@ type Config struct {
 }
 
 func loadConfig() (*Config, error) {
-	// Получаем абсолютный путь к config.ini
 	exePath, err := os.Executable()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get executable path: %v", err)
 	}
 	configPath := filepath.Join(filepath.Dir(exePath), "config.ini")
 
-	// Проверяем существование файла
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config.ini not found in: %s", filepath.Dir(exePath))
-	}
+		defaultConfig := []byte(`[client]
+server_address = 192.168.1.14:50051
+pc_id = default-pc
+auth_token = `)
 
-	// Проверяем, что это текстовый файл
-	if isBinary(configPath) {
-		return nil, fmt.Errorf("config.ini is a binary file")
+		if err := os.WriteFile(configPath, defaultConfig, 0644); err != nil {
+			return nil, fmt.Errorf("failed to create default config: %v", err)
+		}
+		return &Config{
+			ServerAddress: "192.168.1.14:50051",
+			PcID:          "default-pc",
+		}, nil
 	}
 
 	cfg, err := ini.Load(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config: %v", err)
+		return nil, fmt.Errorf("failed to load config: %v", err)
 	}
 
-	config := new(Config)
-	if err := cfg.MapTo(config); err != nil {
-		return nil, fmt.Errorf("config mapping error: %v", err)
+	config := &Config{}
+	if err := cfg.Section("client").MapTo(config); err != nil {
+		return nil, fmt.Errorf("config mapping failed: %v", err)
+	}
+
+	if err := validateConfig(config); err != nil {
+		return nil, err
 	}
 
 	return config, nil
 }
 
-func isBinary(filepath string) bool {
-	file, err := os.Open(filepath)
+func validateConfig(config *Config) error {
+	if config.ServerAddress == "" {
+		return fmt.Errorf("server_address is required")
+	}
+	if config.PcID == "" {
+		return fmt.Errorf("pc_id is required")
+	}
+	if config.AuthToken == "" {
+		return fmt.Errorf("auth_token is required")
+	}
+	return nil
+}
+
+func createGRPCConnection(address string) (*grpc.ClientConn, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx,
+		address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
-		return true
-	}
-	defer file.Close()
-
-	buffer := make([]byte, 512)
-	if _, err := file.Read(buffer); err != nil {
-		return true
+		return nil, fmt.Errorf("failed to connect to %s: %v", address, err)
 	}
 
-	return strings.Contains(http.DetectContentType(buffer), "text/plain") == false
+	return conn, nil
 }
 
 func main() {
 	config, err := loadConfig()
 	if err != nil {
-		log.Fatalf("Config error: %v", err)
+		log.Fatalf("Config initialization failed: %v", err)
 	}
 
-	// Принудительная проверка адреса
-	if config.ServerAddress == "" || config.ServerAddress == "localhost:50051" {
-		log.Fatal("Server address not configured properly in config.ini")
-	}
-
-	// Настройка gRPC клиента с явным указанием IPv4
-	conn, err := grpc.Dial(
-		config.ServerAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultCallOptions(grpc.UseCompressor("gzip")),
-		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
-			d := net.Dialer{}
-			return d.DialContext(ctx, "tcp4", addr) // Явно указываем IPv4
-		}),
-	)
+	conn, err := createGRPCConnection(config.ServerAddress)
 	if err != nil {
-		log.Fatalf("Connection failed to %s: %v", config.ServerAddress, err)
+		log.Fatalf("gRPC connection failed: %v", err)
 	}
 	defer conn.Close()
 
 	client := rpc.NewAdminServiceClient(conn)
 
-	// Тестовый запрос
-	resp, err := client.GrantAccess(context.Background(), &rpc.GrantRequest{
-		UserId:    "test",
-		PcId:      config.PcID,
-		Minutes:   60,
-		AuthToken: config.AuthToken,
+	// Добавляем токен в метаданные
+	md := metadata.Pairs("authorization", "Bearer "+config.AuthToken)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	// Выполняем запрос с таймаутом
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	resp, err := client.GrantAccess(ctx, &rpc.GrantRequest{
+		UserId:  "test-user",
+		PcId:    config.PcID,
+		Minutes: 60,
 	})
 	if err != nil {
-		log.Fatalf("RPC error: %v", err)
+		log.Fatalf("RPC call failed: %v", err)
 	}
 
-	log.Printf("Server response: %v", resp.Message)
+	log.Printf("Server response: %s", resp.Message)
 }

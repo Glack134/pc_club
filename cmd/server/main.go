@@ -25,7 +25,7 @@ type server struct {
 
 func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {
 	// 1. Аутентификация
-	claims, err := auth.ValidateToken(req.AuthToken, s.config.JWTSecret)
+	claims, err := auth.ValidateToken(req.AuthToken)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
@@ -60,7 +60,7 @@ func (s *server) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginRe
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
-	token, err := auth.GenerateToken(user.ID, user.IsAdmin, s.config.JWTSecret)
+	token, err := auth.GenerateToken(user.ID, user.IsAdmin)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -75,6 +75,9 @@ func main() {
 	// Загрузка конфигурации
 	cfg := config.Load()
 
+	// Инициализация секретного ключа для JWT
+	auth.SetSecretKey(cfg.JWTSecret)
+
 	// Инициализация БД
 	if err := storage.Init(cfg.DBPath); err != nil {
 		log.Fatalf("Failed to init storage: %v", err)
@@ -87,10 +90,9 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Настройка gRPC сервера
 	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(authInterceptor(cfg.JWTSecret)),
-	) // Закрывающая скобка здесь
+		grpc.UnaryInterceptor(authInterceptor),
+	)
 	rpc.RegisterAdminServiceServer(srv, &server{config: cfg})
 
 	// Graceful shutdown
@@ -110,26 +112,24 @@ func main() {
 }
 
 // authInterceptor проверяет JWT токен для защищенных методов
-func authInterceptor(secret string) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// Пропускаем аутентификацию для метода Login
-		if info.FullMethod == "/rpc.AdminService/Login" {
-			return handler(ctx, req)
-		}
-
-		// Для остальных методов проверяем токен
-		var token string
-		switch r := req.(type) {
-		case *rpc.GrantRequest:
-			token = r.AuthToken
-		default:
-			return nil, status.Error(codes.Unauthenticated, "authentication required")
-		}
-
-		if _, err := auth.ValidateToken(token, secret); err != nil {
-			return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
-		}
-
+func authInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	// Пропускаем аутентификацию для метода Login
+	if info.FullMethod == "/rpc.AdminService/Login" {
 		return handler(ctx, req)
 	}
+
+	// Для остальных методов проверяем токен
+	var token string
+	switch r := req.(type) {
+	case *rpc.GrantRequest:
+		token = r.AuthToken
+	default:
+		return nil, status.Error(codes.Unauthenticated, "authentication required")
+	}
+
+	if _, err := auth.ValidateToken(token); err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	}
+
+	return handler(ctx, req)
 }

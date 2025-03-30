@@ -2,8 +2,8 @@
 # Скрипт управления доступом к игровым ПК
 # Использование: ./pc_control.sh [lock|unlock] <pc-id>
 
-SERVER_ADDR="localhost:50051"
-TOKEN="your-admin-token"  # Замените на реальный токен
+SERVER_ADDR="192.168.1.14:50051"
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDM0NDEzODAsImlzX2FkbWluIjp0cnVlLCJ1c2VyX2lkIjoiYWRtaW4ifQ.yMFyqjXqCUWt0oA9nJ7o0tZbq5t3YUaMOo3Mx6qydZU"  # Замените на реальный токен
 
 # Проверка аргументов
 if [ $# -ne 2 ]; then

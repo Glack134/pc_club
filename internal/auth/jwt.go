@@ -6,7 +6,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secretKey = []byte("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDM0NDEzODAsImlzX2FkbWluIjp0cnVlLCJ1c2VyX2lkIjoiYWRtaW4ifQ.yMFyqjXqCUWt0oA9nJ7o0tZbq5t3YUaMOo3Mx6qydZU")
+var secretKey []byte
 
 type Claims struct {
 	UserID  string `json:"user_id"`
@@ -14,7 +14,12 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID string, isAdmin bool, secret string) (string, error) {
+// SetSecretKey устанавливает секретный ключ для подписи JWT
+func SetSecretKey(secret string) {
+	secretKey = []byte(secret)
+}
+
+func GenerateToken(userID string, isAdmin bool) (string, error) {
 	claims := &Claims{
 		UserID:  userID,
 		IsAdmin: isAdmin,
@@ -23,12 +28,15 @@ func GenerateToken(userID string, isAdmin bool, secret string) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+	return token.SignedString(secretKey)
 }
 
-func ValidateToken(tokenString, secret string) (*Claims, error) {
+func ValidateToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return secretKey, nil
 	})
 	if err != nil {
 		return nil, err
