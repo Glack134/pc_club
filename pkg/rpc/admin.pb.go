@@ -26,6 +26,7 @@ type GrantRequest struct {
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	PcId          string                 `protobuf:"bytes,2,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
 	Minutes       int32                  `protobuf:"varint,3,opt,name=minutes,proto3" json:"minutes,omitempty"`
+	AuthToken     string                 `protobuf:"bytes,4,opt,name=auth_token,json=authToken,proto3" json:"auth_token,omitempty"` // Добавляем поле для токена
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,27 +82,35 @@ func (x *GrantRequest) GetMinutes() int32 {
 	return 0
 }
 
-type RevokeRequest struct {
+func (x *GrantRequest) GetAuthToken() string {
+	if x != nil {
+		return x.AuthToken
+	}
+	return ""
+}
+
+type LoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PcId          string                 `protobuf:"bytes,1,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RevokeRequest) Reset() {
-	*x = RevokeRequest{}
+func (x *LoginRequest) Reset() {
+	*x = LoginRequest{}
 	mi := &file_pkg_rpc_admin_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RevokeRequest) String() string {
+func (x *LoginRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RevokeRequest) ProtoMessage() {}
+func (*LoginRequest) ProtoMessage() {}
 
-func (x *RevokeRequest) ProtoReflect() protoreflect.Message {
+func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pkg_rpc_admin_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -113,14 +122,21 @@ func (x *RevokeRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RevokeRequest.ProtoReflect.Descriptor instead.
-func (*RevokeRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
+func (*LoginRequest) Descriptor() ([]byte, []int) {
 	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RevokeRequest) GetPcId() string {
+func (x *LoginRequest) GetUsername() string {
 	if x != nil {
-		return x.PcId
+		return x.Username
+	}
+	return ""
+}
+
+func (x *LoginRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
 	}
 	return ""
 }
@@ -177,23 +193,81 @@ func (x *Response) GetMessage() string {
 	return ""
 }
 
+type LoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginResponse) Reset() {
+	*x = LoginResponse{}
+	mi := &file_pkg_rpc_admin_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginResponse) ProtoMessage() {}
+
+func (x *LoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
+func (*LoginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *LoginResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *LoginResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_pkg_rpc_admin_proto protoreflect.FileDescriptor
 
 const file_pkg_rpc_admin_proto_rawDesc = "" +
 	"\n" +
-	"\x13pkg/rpc/admin.proto\x12\x03rpc\"V\n" +
+	"\x13pkg/rpc/admin.proto\x12\x03rpc\"u\n" +
 	"\fGrantRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x13\n" +
 	"\x05pc_id\x18\x02 \x01(\tR\x04pcId\x12\x18\n" +
-	"\aminutes\x18\x03 \x01(\x05R\aminutes\"$\n" +
-	"\rRevokeRequest\x12\x13\n" +
-	"\x05pc_id\x18\x01 \x01(\tR\x04pcId\">\n" +
+	"\aminutes\x18\x03 \x01(\x05R\aminutes\x12\x1d\n" +
+	"\n" +
+	"auth_token\x18\x04 \x01(\tR\tauthToken\"F\n" +
+	"\fLoginRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\">\n" +
 	"\bResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2r\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"?\n" +
+	"\rLoginResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess2o\n" +
 	"\fAdminService\x12/\n" +
-	"\vGrantAccess\x12\x11.rpc.GrantRequest\x1a\r.rpc.Response\x121\n" +
-	"\fRevokeAccess\x12\x12.rpc.RevokeRequest\x1a\r.rpc.ResponseB%Z#github.com/Glack134/pc_club/pkg/rpcb\x06proto3"
+	"\vGrantAccess\x12\x11.rpc.GrantRequest\x1a\r.rpc.Response\x12.\n" +
+	"\x05Login\x12\x11.rpc.LoginRequest\x1a\x12.rpc.LoginResponseB%Z#github.com/Glack134/pc_club/pkg/rpcb\x06proto3"
 
 var (
 	file_pkg_rpc_admin_proto_rawDescOnce sync.Once
@@ -207,17 +281,18 @@ func file_pkg_rpc_admin_proto_rawDescGZIP() []byte {
 	return file_pkg_rpc_admin_proto_rawDescData
 }
 
-var file_pkg_rpc_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_pkg_rpc_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_pkg_rpc_admin_proto_goTypes = []any{
 	(*GrantRequest)(nil),  // 0: rpc.GrantRequest
-	(*RevokeRequest)(nil), // 1: rpc.RevokeRequest
+	(*LoginRequest)(nil),  // 1: rpc.LoginRequest
 	(*Response)(nil),      // 2: rpc.Response
+	(*LoginResponse)(nil), // 3: rpc.LoginResponse
 }
 var file_pkg_rpc_admin_proto_depIdxs = []int32{
 	0, // 0: rpc.AdminService.GrantAccess:input_type -> rpc.GrantRequest
-	1, // 1: rpc.AdminService.RevokeAccess:input_type -> rpc.RevokeRequest
+	1, // 1: rpc.AdminService.Login:input_type -> rpc.LoginRequest
 	2, // 2: rpc.AdminService.GrantAccess:output_type -> rpc.Response
-	2, // 3: rpc.AdminService.RevokeAccess:output_type -> rpc.Response
+	3, // 3: rpc.AdminService.Login:output_type -> rpc.LoginResponse
 	2, // [2:4] is the sub-list for method output_type
 	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -236,7 +311,7 @@ func file_pkg_rpc_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_rpc_admin_proto_rawDesc), len(file_pkg_rpc_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

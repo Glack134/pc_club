@@ -1,21 +1,18 @@
 package config
 
-import (
-	"os"
-	"time"
-)
+import "os"
 
 type Config struct {
-	ServerPort    string
-	JWTSecret     string
-	TokenDuration time.Duration
+	ServerPort string
+	DBPath     string
+	JWTSecret  string
 }
 
 func Load() *Config {
 	return &Config{
-		ServerPort:    getEnv("SERVER_PORT", "50051"),
-		JWTSecret:     getEnv("JWT_SECRET", "default_secret_key"),
-		TokenDuration: 24 * time.Hour,
+		ServerPort: getEnv("SERVER_PORT", "50051"),
+		DBPath:     getEnv("DB_PATH", "./data/sessions.db"),
+		JWTSecret:  getEnv("JWT_SECRET", "default-secret-key-change-me"),
 	}
 }
 

@@ -2,7 +2,7 @@ package models
 
 type User struct {
 	ID       string
-	Usename  string
+	Username string
 	Password string
 	IsAdmin  bool
 }

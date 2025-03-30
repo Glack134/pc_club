@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AdminService_GrantAccess_FullMethodName  = "/rpc.AdminService/GrantAccess"
-	AdminService_RevokeAccess_FullMethodName = "/rpc.AdminService/RevokeAccess"
+	AdminService_GrantAccess_FullMethodName = "/rpc.AdminService/GrantAccess"
+	AdminService_Login_FullMethodName       = "/rpc.AdminService/Login"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AdminServiceClient interface {
 	GrantAccess(ctx context.Context, in *GrantRequest, opts ...grpc.CallOption) (*Response, error)
-	RevokeAccess(ctx context.Context, in *RevokeRequest, opts ...grpc.CallOption) (*Response, error)
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 }
 
 type adminServiceClient struct {
@@ -49,10 +49,10 @@ func (c *adminServiceClient) GrantAccess(ctx context.Context, in *GrantRequest, 
 	return out, nil
 }
 
-func (c *adminServiceClient) RevokeAccess(ctx context.Context, in *RevokeRequest, opts ...grpc.CallOption) (*Response, error) {
+func (c *adminServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Response)
-	err := c.cc.Invoke(ctx, AdminService_RevokeAccess_FullMethodName, in, out, cOpts...)
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, AdminService_Login_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *adminServiceClient) RevokeAccess(ctx context.Context, in *RevokeRequest
 // for forward compatibility.
 type AdminServiceServer interface {
 	GrantAccess(context.Context, *GrantRequest) (*Response, error)
-	RevokeAccess(context.Context, *RevokeRequest) (*Response, error)
+	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -78,8 +78,8 @@ type UnimplementedAdminServiceServer struct{}
 func (UnimplementedAdminServiceServer) GrantAccess(context.Context, *GrantRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GrantAccess not implemented")
 }
-func (UnimplementedAdminServiceServer) RevokeAccess(context.Context, *RevokeRequest) (*Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RevokeAccess not implemented")
+func (UnimplementedAdminServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -120,20 +120,20 @@ func _AdminService_GrantAccess_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AdminService_RevokeAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RevokeRequest)
+func _AdminService_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AdminServiceServer).RevokeAccess(ctx, in)
+		return srv.(AdminServiceServer).Login(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AdminService_RevokeAccess_FullMethodName,
+		FullMethod: AdminService_Login_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AdminServiceServer).RevokeAccess(ctx, req.(*RevokeRequest))
+		return srv.(AdminServiceServer).Login(ctx, req.(*LoginRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,8 +150,8 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AdminService_GrantAccess_Handler,
 		},
 		{
-			MethodName: "RevokeAccess",
-			Handler:    _AdminService_RevokeAccess_Handler,
+			MethodName: "Login",
+			Handler:    _AdminService_Login_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

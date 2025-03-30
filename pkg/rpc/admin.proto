@@ -1,24 +1,30 @@
 syntax = "proto3";
 package rpc;
-
 option go_package = "github.com/Glack134/pc_club/pkg/rpc";
 
 service AdminService {
     rpc GrantAccess(GrantRequest) returns (Response);
-    rpc RevokeAccess(RevokeRequest) returns (Response);
+    rpc Login(LoginRequest) returns (LoginResponse);
 }
 
 message GrantRequest {
-  string user_id = 1;
-  string pc_id = 2;
-  int32 minutes = 3;
+    string user_id = 1;
+    string pc_id = 2;
+    int32 minutes = 3;
+    string auth_token = 4;
 }
 
-message RevokeRequest {
-  string pc_id = 1;
+message LoginRequest {
+    string username = 1;
+    string password = 2;
 }
 
 message Response {
-  bool success = 1;
-  string message = 2;
+    bool success = 1;
+    string message = 2;
+}
+
+message LoginResponse {
+    string token = 1;
+    bool success = 2;
 }
