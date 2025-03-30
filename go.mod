@@ -12,6 +12,7 @@ require (
 	golang.org/x/crypto v0.33.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.6
+	gopkg.in/ini.v1 v1.62.0
 )
 
 require (
