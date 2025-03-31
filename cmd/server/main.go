@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -24,10 +26,10 @@ type server struct {
 }
 
 func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {
-	// 1. Аутентификация
-	claims, err := auth.ValidateToken(req.AuthToken)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	// Claims уже проверены в interceptor, просто получаем их
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok {
+		return nil, status.Error(codes.Internal, "failed to get auth claims")
 	}
 
 	if !claims.IsAdmin {
@@ -111,25 +113,31 @@ func main() {
 	}
 }
 
-// authInterceptor проверяет JWT токен для защищенных методов
 func authInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Пропускаем аутентификацию для метода Login
 	if info.FullMethod == "/rpc.AdminService/Login" {
 		return handler(ctx, req)
 	}
 
-	// Для остальных методов проверяем токен
-	var token string
-	switch r := req.(type) {
-	case *rpc.GrantRequest:
-		token = r.AuthToken
-	default:
-		return nil, status.Error(codes.Unauthenticated, "authentication required")
+	// Получаем токен из метаданных
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "metadata not provided")
 	}
 
-	if _, err := auth.ValidateToken(token); err != nil {
+	authHeader := md.Get("authorization")
+	if len(authHeader) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "authorization token not provided")
+	}
+
+	token := strings.TrimPrefix(authHeader[0], "Bearer ")
+	claims, err := auth.ValidateToken(token)
+	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
+
+	// Добавляем claims в контекст для использования в обработчиках
+	ctx = context.WithValue(ctx, "claims", claims)
 
 	return handler(ctx, req)
 }

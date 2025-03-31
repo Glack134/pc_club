@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Секретный ключ (должен совпадать с серверным)
-	secret := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDM0NDEzODAsImlzX2FkbWluIjp0cnVlLCJ1c2VyX2lkIjoiYWRtaW4ifQ.yMFyqjXqCUWt0oA9nJ7o0tZbq5t3YUaMOo3Mx6qydZU" // Замените на реальный секрет
+	secret := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDM0NTE2NDMsImlzX2FkbWluIjp0cnVlLCJ1c2VyX2lkIjoiYWRtaW4ifQ.zj_ZukYHGf7v58LtOGx7qlGRhEpepAxrKXc6s4saPFc"
 
 	// Создаем claims (данные токена)
 	claims := jwt.MapClaims{

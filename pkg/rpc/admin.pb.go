@@ -26,7 +26,6 @@ type GrantRequest struct {
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	PcId          string                 `protobuf:"bytes,2,opt,name=pc_id,json=pcId,proto3" json:"pc_id,omitempty"`
 	Minutes       int32                  `protobuf:"varint,3,opt,name=minutes,proto3" json:"minutes,omitempty"`
-	AuthToken     string                 `protobuf:"bytes,4,opt,name=auth_token,json=authToken,proto3" json:"auth_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -80,13 +79,6 @@ func (x *GrantRequest) GetMinutes() int32 {
 		return x.Minutes
 	}
 	return 0
-}
-
-func (x *GrantRequest) GetAuthToken() string {
-	if x != nil {
-		return x.AuthToken
-	}
-	return ""
 }
 
 type LoginRequest struct {
@@ -249,13 +241,11 @@ var File_pkg_rpc_admin_proto protoreflect.FileDescriptor
 
 const file_pkg_rpc_admin_proto_rawDesc = "" +
 	"\n" +
-	"\x13pkg/rpc/admin.proto\x12\x03rpc\"u\n" +
+	"\x13pkg/rpc/admin.proto\x12\x03rpc\"V\n" +
 	"\fGrantRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x13\n" +
 	"\x05pc_id\x18\x02 \x01(\tR\x04pcId\x12\x18\n" +
-	"\aminutes\x18\x03 \x01(\x05R\aminutes\x12\x1d\n" +
-	"\n" +
-	"auth_token\x18\x04 \x01(\tR\tauthToken\"F\n" +
+	"\aminutes\x18\x03 \x01(\x05R\aminutes\"F\n" +
 	"\fLoginRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\">\n" +

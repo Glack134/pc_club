@@ -11,7 +11,6 @@ message GrantRequest {
     string user_id = 1;
     string pc_id = 2;
     int32 minutes = 3;
-    string auth_token = 4;
 }
 
 message LoginRequest {

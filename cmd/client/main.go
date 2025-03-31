@@ -103,14 +103,14 @@ func main() {
 
 	client := rpc.NewAdminServiceClient(conn)
 
-	// Добавляем токен в метаданные
+	// Добавляем токен ТОЛЬКО в метаданные
 	md := metadata.Pairs("authorization", "Bearer "+config.AuthToken)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-	// Выполняем запрос с таймаутом
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Токен НЕ передаётся в GrantRequest
 	resp, err := client.GrantAccess(ctx, &rpc.GrantRequest{
 		UserId:  "test-user",
 		PcId:    config.PcID,

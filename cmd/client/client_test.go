@@ -62,10 +62,9 @@ func TestClient(t *testing.T) {
 
 	// Тест выдачи доступа
 	resp, err := client.GrantAccess(context.Background(), &rpc.GrantRequest{
-		UserId:    "test-user",
-		PcId:      "test-pc",
-		Minutes:   30,
-		AuthToken: loginResp.Token,
+		UserId:  "test-user",
+		PcId:    "test-pc",
+		Minutes: 30,
 	})
 	if err != nil {
 		t.Errorf("GrantAccess error: %v", err)
