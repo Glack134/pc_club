@@ -8,13 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"fyne.io/fyne/app"
-	"fyne.io/fyne/container"
-	"fyne.io/fyne/widget"
-	"github.com/Glack134/pc_club/internal/client"
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"gopkg.in/ini.v1"
 )
 
@@ -92,31 +89,6 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func hasActiveSession(client rpc.AdminServiceClient, pcID string) bool {
-	resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
-	if err != nil {
-		return false
-	}
-
-	for _, s := range resp.Sessions {
-		if s.PcId == pcID && s.ExpiresAt > time.Now().Unix() {
-			return true
-		}
-	}
-	return false
-}
-
-func startMainUI(client rpc.AdminServiceClient, config *Config) {
-	a := app.New()
-	w := a.NewWindow("PC Club Client - " + config.PcID)
-
-	// Таймер сессии
-	sessionLabel := widget.NewLabel("Active session")
-	w.SetContent(container.NewCenter(sessionLabel))
-
-	w.Show()
-}
-
 func main() {
 	config, err := loadConfig()
 	if err != nil {
@@ -129,20 +101,24 @@ func main() {
 	}
 	defer conn.Close()
 
-	grpcClient := rpc.NewAdminServiceClient(conn)
+	client := rpc.NewAdminServiceClient(conn)
 
-	// Создаем экран блокировки
-	lockScreen := client.NewLockScreen()
-	lockScreen.SetUnlockCallback(func() {
-		startMainUI(grpcClient, config)
+	// Добавляем токен в метаданные
+	md := metadata.Pairs("authorization", "Bearer "+config.AuthToken)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// Выполняем gRPC вызов
+	resp, err := client.GrantAccess(ctx, &rpc.GrantRequest{
+		UserId:  "test-user",
+		PcId:    config.PcID,
+		Minutes: 60,
 	})
-
-	if hasActiveSession(grpcClient, config.PcID) {
-		startMainUI(grpcClient, config)
-	} else {
-		lockScreen.Show()
+	if err != nil {
+		log.Fatalf("RPC call failed: %v", err)
 	}
 
-	// Запускаем главный цикл приложения
-	lockScreen.Window.ShowAndRun()
+	log.Printf("Server response: %s", resp.Message)
 }
