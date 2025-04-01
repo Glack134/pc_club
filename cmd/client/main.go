@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"fyne.io/fyne/app"
+	"fyne.io/fyne/container"
+	"fyne.io/fyne/widget"
+	"github.com/Glack134/pc_club/internal/client"
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -104,7 +107,14 @@ func hasActiveSession(client rpc.AdminServiceClient, pcID string) bool {
 }
 
 func startMainUI(client rpc.AdminServiceClient, config *Config) {
-	// Реализация основного интерфейса
+	a := app.New()
+	w := a.NewWindow("PC Club Client - " + config.PcID)
+
+	// Таймер сессии
+	sessionLabel := widget.NewLabel("Active session")
+	w.SetContent(container.NewCenter(sessionLabel))
+
+	w.Show()
 }
 
 func main() {
@@ -119,20 +129,20 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := rpc.NewAdminServiceClient(conn)
+	grpcClient := rpc.NewAdminServiceClient(conn)
 
-	// Инициализация экрана блокировки
+	// Создаем экран блокировки
 	lockScreen := client.NewLockScreen()
 	lockScreen.SetUnlockCallback(func() {
-		startMainUI(client, config)
+		startMainUI(grpcClient, config)
 	})
 
-	// Проверка активной сессии
-	if hasActiveSession(client, config.PcID) {
-		startMainUI(client, config)
+	if hasActiveSession(grpcClient, config.PcID) {
+		startMainUI(grpcClient, config)
 	} else {
 		lockScreen.Show()
 	}
 
-	app.New().Run()
+	// Запускаем главный цикл приложения
+	lockScreen.Window.ShowAndRun()
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type LockScreen struct {
-	window    fyne.Window
+	Window    fyne.Window // Сделали поле экспортируемым (с большой буквы)
 	onUnlock  func()
 	adminMode bool
 }
@@ -19,7 +19,7 @@ func NewLockScreen() *LockScreen {
 	w.SetFullScreen(true)
 
 	return &LockScreen{
-		window: w,
+		Window: w,
 	}
 }
 
@@ -38,8 +38,8 @@ func (ls *LockScreen) Show() {
 		),
 	)
 
-	ls.window.SetContent(content)
-	ls.window.Show()
+	ls.Window.SetContent(content)
+	ls.Window.Show()
 }
 
 func (ls *LockScreen) showAdminAuth() {
@@ -56,7 +56,7 @@ func (ls *LockScreen) showAdminAuth() {
 		}
 	}
 
-	ls.window.SetContent(container.NewCenter(form))
+	ls.Window.SetContent(container.NewCenter(form))
 }
 
 func (ls *LockScreen) authenticate(user, pass string) bool {
