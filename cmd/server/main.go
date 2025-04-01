@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -16,13 +17,140 @@ import (
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
+var clientConnections = make(map[string]rpc.AdminServiceClient)
+
 type server struct {
 	rpc.UnimplementedAdminServiceServer
 	config *config.Config
+}
+
+func getClientForPC(pcID string) (rpc.AdminServiceClient, error) {
+	// В реальной реализации здесь должно быть:
+	// 1. Поиск адреса клиента по pcID (из конфига или БД)
+	// 2. Установка gRPC соединения
+	// 3. Сохранение соединения в clientConnections
+
+	if client, ok := clientConnections[pcID]; ok {
+		return client, nil
+	}
+
+	// Пример для тестирования - используйте реальные адреса клиентов
+	conn, err := grpc.Dial(
+		fmt.Sprintf("%s:50051", pcID), // Замените на реальный адрес клиента
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	client := rpc.NewAdminServiceClient(conn)
+	clientConnections[pcID] = client
+	return client, nil
+}
+
+func (s *server) TerminateSession(ctx context.Context, req *rpc.SessionRequest) (*rpc.Response, error) {
+	claims, _ := ctx.Value("claims").(*auth.Claims)
+	if !claims.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	session, err := storage.GetSession(req.SessionId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+
+	if err := storage.TerminateSession(req.SessionId); err != nil {
+		return nil, status.Error(codes.Internal, "failed to terminate session")
+	}
+
+	go func() {
+		client, err := getClientForPC(session.PcID)
+		if err == nil {
+			_, _ = client.LockPC(context.Background(), &rpc.PCRequest{PcId: session.PcID})
+		}
+	}()
+
+	_ = storage.LogAction(claims.UserID, "session_terminated",
+		fmt.Sprintf("Session %s terminated", req.SessionId))
+
+	return &rpc.Response{Success: true, Message: "Session terminated"}, nil
+}
+
+func (s *server) LockPC(ctx context.Context, req *rpc.PCRequest) (*rpc.Response, error) {
+	// Проверяем права администратора
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok || !claims.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	// В реальной реализации здесь должна быть логика блокировки PC
+	log.Printf("Received LockPC request for PC: %s", req.PcId)
+
+	return &rpc.Response{
+		Success: true,
+		Message: fmt.Sprintf("PC %s locked successfully", req.PcId),
+	}, nil
+}
+
+func (s *server) UnlockPC(ctx context.Context, req *rpc.PCRequest) (*rpc.Response, error) {
+	// Проверяем права администратора
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok || !claims.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	// В реальной реализации здесь должна быть логика разблокировки PC
+	log.Printf("Received UnlockPC request for PC: %s", req.PcId)
+
+	return &rpc.Response{
+		Success: true,
+		Message: fmt.Sprintf("PC %s unlocked successfully", req.PcId),
+	}, nil
+}
+
+func (s *server) ForceLockPC(ctx context.Context, req *rpc.PCRequest) (*rpc.Response, error) {
+	claims, _ := ctx.Value("claims").(*auth.Claims)
+	if !claims.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	client, err := getClientForPC(req.PcId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "PC client not available")
+	}
+
+	if _, err := client.LockPC(context.Background(), req); err != nil {
+		return nil, status.Error(codes.Internal, "failed to lock PC")
+	}
+
+	_ = storage.LogAction(claims.UserID, "force_locked",
+		fmt.Sprintf("PC %s force locked", req.PcId))
+
+	return &rpc.Response{Success: true, Message: "PC locked"}, nil
+}
+
+func (s *server) GetActiveSessions(ctx context.Context, _ *rpc.Empty) (*rpc.SessionsResponse, error) {
+	sessions, err := storage.GetActiveSessions()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get sessions")
+	}
+
+	var pbSessions []*rpc.Session
+	for _, s := range sessions {
+		pbSessions = append(pbSessions, &rpc.Session{
+			Id:        s.ID,
+			UserId:    s.UserID,
+			PcId:      s.PcID,
+			ExpiresAt: s.ExpiresAt.Unix(),
+		})
+	}
+
+	return &rpc.SessionsResponse{Sessions: pbSessions}, nil
 }
 
 func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {

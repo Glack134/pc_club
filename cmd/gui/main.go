@@ -9,27 +9,38 @@ import (
 
 func main() {
 	a := app.New()
-	w := a.NewWindow("Game Access Control")
+	w := a.NewWindow("PC Club Admin")
 
+	// Форма выдачи доступа
 	userEntry := widget.NewEntry()
 	pcEntry := widget.NewEntry()
 	timeEntry := widget.NewEntry()
 
 	form := &widget.Form{
 		Items: []*widget.FormItem{
-			{Text: "User", Widget: userEntry},
-			{Text: "PC", Widget: pcEntry},
+			{Text: "User ID", Widget: userEntry},
+			{Text: "PC ID", Widget: pcEntry},
 			{Text: "Minutes", Widget: timeEntry},
 		},
 		OnSubmit: func() {
-			// Обработка отправки формы
+			// Здесь будет обработка выдачи доступа
 		},
 	}
 
-	w.SetContent(container.NewVBox(
-		widget.NewLabel("Grant Access"),
-		form,
-	))
-	w.Resize(fyne.NewSize(400, 300))
+	// Список активных сессий
+	sessionsList := widget.NewList(
+		func() int { return 0 },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(i int, o fyne.CanvasObject) {},
+	)
+
+	// Создаем вкладки
+	tabs := container.NewAppTabs(
+		container.NewTabItem("Grant Access", form),
+		container.NewTabItem("Sessions", sessionsList),
+	)
+
+	w.SetContent(tabs)
+	w.Resize(fyne.NewSize(600, 400))
 	w.ShowAndRun()
 }

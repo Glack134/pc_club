@@ -19,8 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AdminService_GrantAccess_FullMethodName = "/rpc.AdminService/GrantAccess"
-	AdminService_Login_FullMethodName       = "/rpc.AdminService/Login"
+	AdminService_GrantAccess_FullMethodName       = "/rpc.AdminService/GrantAccess"
+	AdminService_Login_FullMethodName             = "/rpc.AdminService/Login"
+	AdminService_LockPC_FullMethodName            = "/rpc.AdminService/LockPC"
+	AdminService_UnlockPC_FullMethodName          = "/rpc.AdminService/UnlockPC"
+	AdminService_TerminateSession_FullMethodName  = "/rpc.AdminService/TerminateSession"
+	AdminService_GetActiveSessions_FullMethodName = "/rpc.AdminService/GetActiveSessions"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -29,6 +33,10 @@ const (
 type AdminServiceClient interface {
 	GrantAccess(ctx context.Context, in *GrantRequest, opts ...grpc.CallOption) (*Response, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	LockPC(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*Response, error)
+	UnlockPC(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*Response, error)
+	TerminateSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Response, error)
+	GetActiveSessions(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SessionsResponse, error)
 }
 
 type adminServiceClient struct {
@@ -59,12 +67,56 @@ func (c *adminServiceClient) Login(ctx context.Context, in *LoginRequest, opts .
 	return out, nil
 }
 
+func (c *adminServiceClient) LockPC(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Response)
+	err := c.cc.Invoke(ctx, AdminService_LockPC_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) UnlockPC(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Response)
+	err := c.cc.Invoke(ctx, AdminService_UnlockPC_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) TerminateSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Response)
+	err := c.cc.Invoke(ctx, AdminService_TerminateSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) GetActiveSessions(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SessionsResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetActiveSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
 type AdminServiceServer interface {
 	GrantAccess(context.Context, *GrantRequest) (*Response, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	LockPC(context.Context, *PCRequest) (*Response, error)
+	UnlockPC(context.Context, *PCRequest) (*Response, error)
+	TerminateSession(context.Context, *SessionRequest) (*Response, error)
+	GetActiveSessions(context.Context, *Empty) (*SessionsResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -80,6 +132,18 @@ func (UnimplementedAdminServiceServer) GrantAccess(context.Context, *GrantReques
 }
 func (UnimplementedAdminServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedAdminServiceServer) LockPC(context.Context, *PCRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LockPC not implemented")
+}
+func (UnimplementedAdminServiceServer) UnlockPC(context.Context, *PCRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnlockPC not implemented")
+}
+func (UnimplementedAdminServiceServer) TerminateSession(context.Context, *SessionRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TerminateSession not implemented")
+}
+func (UnimplementedAdminServiceServer) GetActiveSessions(context.Context, *Empty) (*SessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetActiveSessions not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +202,78 @@ func _AdminService_Login_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_LockPC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PCRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).LockPC(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_LockPC_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).LockPC(ctx, req.(*PCRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_UnlockPC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PCRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).UnlockPC(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_UnlockPC_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).UnlockPC(ctx, req.(*PCRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_TerminateSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).TerminateSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_TerminateSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).TerminateSession(ctx, req.(*SessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_GetActiveSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetActiveSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetActiveSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetActiveSessions(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +288,22 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _AdminService_Login_Handler,
+		},
+		{
+			MethodName: "LockPC",
+			Handler:    _AdminService_LockPC_Handler,
+		},
+		{
+			MethodName: "UnlockPC",
+			Handler:    _AdminService_UnlockPC_Handler,
+		},
+		{
+			MethodName: "TerminateSession",
+			Handler:    _AdminService_TerminateSession_Handler,
+		},
+		{
+			MethodName: "GetActiveSessions",
+			Handler:    _AdminService_GetActiveSessions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"fyne.io/fyne/app"
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"gopkg.in/ini.v1"
 )
 
@@ -89,6 +89,24 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
+func hasActiveSession(client rpc.AdminServiceClient, pcID string) bool {
+	resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
+	if err != nil {
+		return false
+	}
+
+	for _, s := range resp.Sessions {
+		if s.PcId == pcID && s.ExpiresAt > time.Now().Unix() {
+			return true
+		}
+	}
+	return false
+}
+
+func startMainUI(client rpc.AdminServiceClient, config *Config) {
+	// Реализация основного интерфейса
+}
+
 func main() {
 	config, err := loadConfig()
 	if err != nil {
@@ -103,22 +121,18 @@ func main() {
 
 	client := rpc.NewAdminServiceClient(conn)
 
-	// Добавляем токен ТОЛЬКО в метаданные
-	md := metadata.Pairs("authorization", "Bearer "+config.AuthToken)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// Токен НЕ передаётся в GrantRequest
-	resp, err := client.GrantAccess(ctx, &rpc.GrantRequest{
-		UserId:  "test-user",
-		PcId:    config.PcID,
-		Minutes: 60,
+	// Инициализация экрана блокировки
+	lockScreen := client.NewLockScreen()
+	lockScreen.SetUnlockCallback(func() {
+		startMainUI(client, config)
 	})
-	if err != nil {
-		log.Fatalf("RPC call failed: %v", err)
+
+	// Проверка активной сессии
+	if hasActiveSession(client, config.PcID) {
+		startMainUI(client, config)
+	} else {
+		lockScreen.Show()
 	}
 
-	log.Printf("Server response: %s", resp.Message)
+	app.New().Run()
 }

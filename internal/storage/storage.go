@@ -17,7 +17,7 @@ var db *sql.DB
 type Session struct {
 	ID        string
 	UserID    string
-	PCID      string
+	PcID      string
 	ExpiresAt time.Time
 }
 
@@ -106,4 +106,46 @@ type User struct {
 
 func generateSessionID() string {
 	return fmt.Sprintf("session-%d", time.Now().UnixNano())
+}
+
+func TerminateSession(sessionID string) error {
+	_, err := db.Exec("DELETE FROM sessions WHERE id = ?", sessionID)
+	return err
+}
+
+func GetSession(sessionID string) (*Session, error) {
+	var s Session
+	err := db.QueryRow(
+		"SELECT id, user_id, pc_id, expires_at FROM sessions WHERE id = ?",
+		sessionID,
+	).Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt)
+	return &s, err
+}
+
+func GetActiveSessions() ([]Session, error) {
+	rows, err := db.Query(
+		"SELECT id, user_id, pc_id, expires_at FROM sessions WHERE expires_at > datetime('now')")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Session
+	for rows.Next() {
+		var s Session
+		err = rows.Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
+func LogAction(userID, action, details string) error {
+	_, err := db.Exec(
+		"INSERT INTO actions (user_id, action, details, timestamp) VALUES (?, ?, ?, ?)",
+		userID, action, details, time.Now(),
+	)
+	return err
 }

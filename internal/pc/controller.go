@@ -33,3 +33,11 @@ func UnlockPC() error {
 	}
 	return cmd.Run()
 }
+
+func DisableInput() {
+	// Реализация для конкретной ОС
+}
+
+func EnableInput() {
+	// Реализация для конкретной ОС
+}
