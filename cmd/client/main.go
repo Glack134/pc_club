@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"github.com/Glack134/pc_club/internal/auth"
 	"github.com/Glack134/pc_club/internal/client"
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
@@ -25,7 +24,7 @@ import (
 type Config struct {
 	ServerAddress string `ini:"server_address"`
 	PcID          string `ini:"pc_id"`
-	AuthToken     string `ini:"auth_token"`
+	AuthToken     string `ini:"auth_token,omitempty"`
 }
 
 func loadConfig() (*Config, error) {
@@ -39,15 +38,10 @@ func loadConfig() (*Config, error) {
 		defaultConfig := []byte(`[client]
 server_address = 192.168.1.14:50051
 pc_id = default-pc
-auth_token = `)
-
+`)
 		if err := os.WriteFile(configPath, defaultConfig, 0644); err != nil {
 			return nil, fmt.Errorf("failed to create default config: %v", err)
 		}
-		return &Config{
-			ServerAddress: "192.168.1.14:50051",
-			PcID:          "default-pc",
-		}, nil
 	}
 
 	cfg, err := ini.Load(configPath)
@@ -60,24 +54,14 @@ auth_token = `)
 		return nil, fmt.Errorf("config mapping failed: %v", err)
 	}
 
-	if err := validateConfig(config); err != nil {
-		return nil, err
+	if config.ServerAddress == "" {
+		return nil, fmt.Errorf("server_address is required")
+	}
+	if config.PcID == "" {
+		return nil, fmt.Errorf("pc_id is required")
 	}
 
 	return config, nil
-}
-
-func validateConfig(config *Config) error {
-	if config.ServerAddress == "" {
-		return fmt.Errorf("server_address is required")
-	}
-	if config.PcID == "" {
-		return fmt.Errorf("pc_id is required")
-	}
-	if config.AuthToken == "" {
-		return fmt.Errorf("auth_token is required")
-	}
-	return nil
 }
 
 func createGRPCConnection(address string) (*grpc.ClientConn, error) {
@@ -96,18 +80,18 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func hasActiveSession(client rpc.AdminServiceClient, pcID string) bool {
-	resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
+func checkSession(grpcClient rpc.AdminServiceClient, pcID string) (bool, error) {
+	resp, err := grpcClient.GetActiveSessions(context.Background(), &rpc.Empty{})
 	if err != nil {
-		return false
+		return false, fmt.Errorf("failed to get sessions: %v", err)
 	}
 
 	for _, s := range resp.Sessions {
 		if s.PcId == pcID && s.ExpiresAt > time.Now().Unix() {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func unlockPC() {
@@ -116,7 +100,7 @@ func unlockPC() {
 	case "windows":
 		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
 	case "linux":
-		cmd = exec.Command("xdg-open", "steam://")
+		cmd = exec.Command("xdg-screensaver", "reset")
 	}
 	if err := cmd.Run(); err != nil {
 		log.Printf("Failed to unlock PC: %v", err)
@@ -129,66 +113,70 @@ func lockPC() {
 	case "windows":
 		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
 	case "linux":
-		cmd = exec.Command("loginctl", "lock-session")
+		cmd = exec.Command("xdg-screensaver", "lock")
 	}
 	if err := cmd.Run(); err != nil {
 		log.Printf("Failed to lock PC: %v", err)
 	}
 }
 
-func showSessionUI(client rpc.AdminServiceClient, config *Config) {
+func runSessionUI(grpcClient rpc.AdminServiceClient, pcID string) {
 	a := app.New()
-	w := a.NewWindow("PC Club - " + config.PcID)
+	w := a.NewWindow("PC Club - " + pcID)
 	w.SetFullScreen(true)
 
 	timeLeft := binding.NewString()
 	timeLabel := widget.NewLabelWithData(timeLeft)
+	timeLeft.Set("Checking session time...")
 
-	// Обновление времени
-	go func() {
-		for {
-			resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
-			if err == nil {
-				for _, s := range resp.Sessions {
-					if s.PcId == config.PcID {
-						remaining := time.Until(time.Unix(s.ExpiresAt, 0))
-						timeLeft.Set(fmt.Sprintf("Time left: %v", remaining.Round(time.Second)))
-					}
-				}
-			}
-			time.Sleep(1 * time.Second)
+	updateTime := func() {
+		resp, err := grpcClient.GetActiveSessions(context.Background(), &rpc.Empty{})
+		if err != nil {
+			timeLeft.Set("Error checking time")
+			return
 		}
-	}()
+
+		for _, s := range resp.Sessions {
+			if s.PcId == pcID {
+				remaining := time.Until(time.Unix(s.ExpiresAt, 0))
+				timeLeft.Set(fmt.Sprintf("Time left: %v", remaining.Round(time.Second)))
+				return
+			}
+		}
+		timeLeft.Set("No active session")
+	}
+
+	lockBtn := widget.NewButton("Lock Now", func() {
+		lockPC()
+		w.Close()
+	})
 
 	w.SetContent(container.NewVBox(
 		timeLabel,
-		widget.NewButton("Lock Now", func() {
-			lockPC()
-			w.Close()
-		}),
+		lockBtn,
 	))
-	w.ShowAndRun()
+
+	// Первое обновление
+	updateTime()
+
+	// Периодическое обновление
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			updateTime()
+		}
+	}()
+
+	w.Show()
+	a.Run()
 }
 
 func main() {
 	config, err := loadConfig()
 	if err != nil {
 		log.Fatalf("Config initialization failed: %v", err)
-	}
-
-	// При запуске проверяем токен из конфига
-	if config.AuthToken != "" {
-		claims, err := auth.ValidateToken(config.AuthToken)
-		if err == nil && claims.PCID == config.PcID {
-			unlockPC()
-			conn, err := createGRPCConnection(config.ServerAddress)
-			if err != nil {
-				log.Fatalf("gRPC connection failed: %v", err)
-			}
-			defer conn.Close()
-			showSessionUI(rpc.NewAdminServiceClient(conn), config)
-			return
-		}
 	}
 
 	conn, err := createGRPCConnection(config.ServerAddress)
@@ -199,16 +187,22 @@ func main() {
 
 	grpcClient := rpc.NewAdminServiceClient(conn)
 
-	// Проверка активной сессии
-	if hasActiveSession(grpcClient, config.PcID) {
+	// Проверяем активную сессию
+	hasSession, err := checkSession(grpcClient, config.PcID)
+	if err != nil {
+		log.Printf("Session check error: %v", err)
+	}
+
+	if hasSession {
 		unlockPC()
-		showSessionUI(grpcClient, config)
+		runSessionUI(grpcClient, config.PcID)
 	} else {
 		lockScreen := client.NewLockScreen(config.PcID)
 		lockScreen.SetUnlockCallback(func() {
 			unlockPC()
-			showSessionUI(grpcClient, config)
+			runSessionUI(grpcClient, config.PcID)
 		})
-		lockScreen.Run()
+		lockScreen.Show()
+		app.New().Run()
 	}
 }
