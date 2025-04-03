@@ -9,6 +9,7 @@ service AdminService {
     rpc UnlockPC(PCRequest) returns (Response);
     rpc TerminateSession(SessionRequest) returns (Response);
     rpc GetActiveSessions(Empty) returns (SessionsResponse);
+    rpc CheckPCSession(PCRequest) returns (SessionStatus);
 }
 
 message GrantRequest {
@@ -53,4 +54,8 @@ message Response {
     bool success = 1;
     string message = 2;
     string token = 3;
+}
+
+message SessionStatus {
+    bool is_active = 1;
 }

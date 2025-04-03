@@ -25,6 +25,7 @@ const (
 	AdminService_UnlockPC_FullMethodName          = "/rpc.AdminService/UnlockPC"
 	AdminService_TerminateSession_FullMethodName  = "/rpc.AdminService/TerminateSession"
 	AdminService_GetActiveSessions_FullMethodName = "/rpc.AdminService/GetActiveSessions"
+	AdminService_CheckPCSession_FullMethodName    = "/rpc.AdminService/CheckPCSession"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -37,6 +38,7 @@ type AdminServiceClient interface {
 	UnlockPC(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*Response, error)
 	TerminateSession(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (*Response, error)
 	GetActiveSessions(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*SessionsResponse, error)
+	CheckPCSession(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*SessionStatus, error)
 }
 
 type adminServiceClient struct {
@@ -107,6 +109,16 @@ func (c *adminServiceClient) GetActiveSessions(ctx context.Context, in *Empty, o
 	return out, nil
 }
 
+func (c *adminServiceClient) CheckPCSession(ctx context.Context, in *PCRequest, opts ...grpc.CallOption) (*SessionStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SessionStatus)
+	err := c.cc.Invoke(ctx, AdminService_CheckPCSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -117,6 +129,7 @@ type AdminServiceServer interface {
 	UnlockPC(context.Context, *PCRequest) (*Response, error)
 	TerminateSession(context.Context, *SessionRequest) (*Response, error)
 	GetActiveSessions(context.Context, *Empty) (*SessionsResponse, error)
+	CheckPCSession(context.Context, *PCRequest) (*SessionStatus, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -144,6 +157,9 @@ func (UnimplementedAdminServiceServer) TerminateSession(context.Context, *Sessio
 }
 func (UnimplementedAdminServiceServer) GetActiveSessions(context.Context, *Empty) (*SessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetActiveSessions not implemented")
+}
+func (UnimplementedAdminServiceServer) CheckPCSession(context.Context, *PCRequest) (*SessionStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckPCSession not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -274,6 +290,24 @@ func _AdminService_GetActiveSessions_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_CheckPCSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PCRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).CheckPCSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_CheckPCSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).CheckPCSession(ctx, req.(*PCRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +338,10 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetActiveSessions",
 			Handler:    _AdminService_GetActiveSessions_Handler,
+		},
+		{
+			MethodName: "CheckPCSession",
+			Handler:    _AdminService_CheckPCSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

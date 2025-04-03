@@ -24,7 +24,6 @@ import (
 type Config struct {
 	ServerAddress string `ini:"server_address"`
 	PcID          string `ini:"pc_id"`
-	AuthToken     string `ini:"auth_token,omitempty"`
 }
 
 func loadConfig() (*Config, error) {
@@ -37,7 +36,7 @@ func loadConfig() (*Config, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaultConfig := []byte(`[client]
 server_address = 192.168.1.14:50051
-pc_id = default-pc
+pc_id = номер-pc
 `)
 		if err := os.WriteFile(configPath, defaultConfig, 0644); err != nil {
 			return nil, fmt.Errorf("failed to create default config: %v", err)
@@ -76,22 +75,15 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to %s: %v", address, err)
 	}
-
 	return conn, nil
 }
 
 func checkSession(grpcClient rpc.AdminServiceClient, pcID string) (bool, error) {
-	resp, err := grpcClient.GetActiveSessions(context.Background(), &rpc.Empty{})
+	resp, err := grpcClient.CheckPCSession(context.Background(), &rpc.PCRequest{PcId: pcID})
 	if err != nil {
-		return false, fmt.Errorf("failed to get sessions: %v", err)
+		return false, fmt.Errorf("failed to check PC session: %v", err)
 	}
-
-	for _, s := range resp.Sessions {
-		if s.PcId == pcID && s.ExpiresAt > time.Now().Unix() {
-			return true, nil
-		}
-	}
-	return false, nil
+	return resp.IsActive, nil
 }
 
 func unlockPC() {
@@ -130,20 +122,18 @@ func runSessionUI(grpcClient rpc.AdminServiceClient, pcID string) {
 	timeLeft.Set("Checking session time...")
 
 	updateTime := func() {
-		resp, err := grpcClient.GetActiveSessions(context.Background(), &rpc.Empty{})
+		resp, err := grpcClient.CheckPCSession(context.Background(), &rpc.PCRequest{PcId: pcID})
 		if err != nil {
 			timeLeft.Set("Error checking time")
 			return
 		}
 
-		for _, s := range resp.Sessions {
-			if s.PcId == pcID {
-				remaining := time.Until(time.Unix(s.ExpiresAt, 0))
-				timeLeft.Set(fmt.Sprintf("Time left: %v", remaining.Round(time.Second)))
-				return
-			}
+		if resp.IsActive {
+			// В реальной реализации нужно получать оставшееся время
+			timeLeft.Set("Session active")
+		} else {
+			timeLeft.Set("No active session")
 		}
-		timeLeft.Set("No active session")
 	}
 
 	lockBtn := widget.NewButton("Lock Now", func() {
@@ -156,10 +146,8 @@ func runSessionUI(grpcClient rpc.AdminServiceClient, pcID string) {
 		lockBtn,
 	))
 
-	// Первое обновление
 	updateTime()
 
-	// Периодическое обновление
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
@@ -187,7 +175,6 @@ func main() {
 
 	grpcClient := rpc.NewAdminServiceClient(conn)
 
-	// Проверяем активную сессию
 	hasSession, err := checkSession(grpcClient, config.PcID)
 	if err != nil {
 		log.Printf("Session check error: %v", err)

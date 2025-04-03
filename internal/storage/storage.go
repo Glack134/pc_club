@@ -19,10 +19,26 @@ type Session struct {
 	UserID    string
 	PcID      string
 	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+func GetSessionByPC(pcID string) (*Session, error) {
+	var session Session
+	err := db.QueryRow(
+		"SELECT id, user_id, pc_id, expires_at, created_at FROM sessions WHERE pc_id = ? ORDER BY created_at DESC LIMIT 1",
+		pcID,
+	).Scan(&session.ID, &session.UserID, &session.PcID, &session.ExpiresAt, &session.CreatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no session found for PC %s", pcID)
+		}
+		return nil, fmt.Errorf("failed to get session: %v", err)
+	}
+	return &session, nil
 }
 
 func Init(dbPath string) error {
-	// Создаем директорию если не существует
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
 		return fmt.Errorf("failed to create db directory: %v", err)
 	}
@@ -33,32 +49,38 @@ func Init(dbPath string) error {
 		return fmt.Errorf("failed to open database: %v", err)
 	}
 
-	// Проверяем соединение
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 
-	// Создаем таблицы
 	if _, err := db.Exec(`
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            is_admin BOOLEAN NOT NULL DEFAULT FALSE
-        );
-        
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            pc_id TEXT NOT NULL,
-            expires_at DATETIME NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        );
-    `); err != nil {
+		CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			username TEXT UNIQUE NOT NULL,
+			password TEXT NOT NULL,
+			is_admin BOOLEAN NOT NULL DEFAULT FALSE
+		);
+		
+		CREATE TABLE IF NOT EXISTS sessions (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			pc_id TEXT NOT NULL,
+			expires_at DATETIME NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id)
+		);
+		
+		CREATE TABLE IF NOT EXISTS actions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id TEXT NOT NULL,
+			action TEXT NOT NULL,
+			details TEXT,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+	`); err != nil {
 		return fmt.Errorf("failed to create tables: %v", err)
 	}
 
-	// Создаем тестового админа если нет пользователей
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count); err != nil {
 		return fmt.Errorf("failed to count users: %v", err)
@@ -88,7 +110,7 @@ func Close() error {
 func CreateSession(userID, pcID string, duration time.Duration) (string, error) {
 	id := generateSessionID()
 	_, err := db.Exec(
-		"INSERT INTO sessions VALUES (?, ?, ?, ?)",
+		"INSERT INTO sessions (id, user_id, pc_id, expires_at) VALUES (?, ?, ?, ?)",
 		id,
 		userID,
 		pcID,
@@ -116,15 +138,15 @@ func TerminateSession(sessionID string) error {
 func GetSession(sessionID string) (*Session, error) {
 	var s Session
 	err := db.QueryRow(
-		"SELECT id, user_id, pc_id, expires_at FROM sessions WHERE id = ?",
+		"SELECT id, user_id, pc_id, expires_at, created_at FROM sessions WHERE id = ?",
 		sessionID,
-	).Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt)
+	).Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt, &s.CreatedAt)
 	return &s, err
 }
 
 func GetActiveSessions() ([]Session, error) {
 	rows, err := db.Query(
-		"SELECT id, user_id, pc_id, expires_at FROM sessions WHERE expires_at > datetime('now')")
+		"SELECT id, user_id, pc_id, expires_at, created_at FROM sessions WHERE expires_at > datetime('now')")
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +155,7 @@ func GetActiveSessions() ([]Session, error) {
 	var sessions []Session
 	for rows.Next() {
 		var s Session
-		err = rows.Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt)
+		err = rows.Scan(&s.ID, &s.UserID, &s.PcID, &s.ExpiresAt, &s.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -144,8 +166,8 @@ func GetActiveSessions() ([]Session, error) {
 
 func LogAction(userID, action, details string) error {
 	_, err := db.Exec(
-		"INSERT INTO actions (user_id, action, details, timestamp) VALUES (?, ?, ?, ?)",
-		userID, action, details, time.Now(),
+		"INSERT INTO actions (user_id, action, details) VALUES (?, ?, ?)",
+		userID, action, details,
 	)
 	return err
 }

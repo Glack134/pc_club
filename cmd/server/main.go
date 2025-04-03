@@ -29,12 +29,20 @@ type server struct {
 	config *config.Config
 }
 
-func getClientForPC(pcID string) (rpc.AdminServiceClient, error) {
-	// В реальной реализации здесь должно быть:
-	// 1. Поиск адреса клиента по pcID (из конфига или БД)
-	// 2. Установка gRPC соединения
-	// 3. Сохранение соединения в clientConnections
+func (s *server) CheckPCSession(ctx context.Context, req *rpc.PCRequest) (*rpc.SessionStatus, error) {
+	session, err := storage.GetSessionByPC(req.PcId)
+	if err != nil {
+		return &rpc.SessionStatus{IsActive: false}, nil
+	}
 
+	// Исправляем сравнение времени
+	isActive := session.ExpiresAt.After(time.Now())
+	return &rpc.SessionStatus{
+		IsActive: isActive,
+	}, nil
+}
+
+func getClientForPC(pcID string) (rpc.AdminServiceClient, error) {
 	if client, ok := clientConnections[pcID]; ok {
 		return client, nil
 	}
@@ -201,53 +209,12 @@ func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.R
 	}, nil
 }
 
-func main() {
-	// Загрузка конфигурации
-	cfg := config.Load()
-
-	// Инициализация секретного ключа для JWT
-	auth.Init(cfg.JWTUserSecret, cfg.JWTAdminSecret)
-
-	// Инициализация БД
-	if err := storage.Init(cfg.DBPath); err != nil {
-		log.Fatalf("Failed to init storage: %v", err)
-	}
-	defer storage.Close()
-
-	// Настройка gRPC сервера
-	lis, err := net.Listen("tcp", ":"+cfg.ServerPort)
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-
-	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(authInterceptor),
-	)
-	rpc.RegisterAdminServiceServer(srv, &server{config: cfg})
-
-	// Graceful shutdown
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
-		<-sigint
-
-		log.Println("Shutting down server...")
-		srv.GracefulStop()
-	}()
-
-	log.Printf("Server started on port %s", cfg.ServerPort)
-	if err := srv.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
-}
-
 func authInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	// Пропускаем аутентификацию для метода Login
-	if info.FullMethod == "/rpc.AdminService/Login" {
+	if info.FullMethod == "/rpc.AdminService/Login" ||
+		info.FullMethod == "/rpc.AdminService/CheckPCSession" {
 		return handler(ctx, req)
 	}
 
-	// Получаем токен из метаданных
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "metadata not provided")
@@ -264,8 +231,39 @@ func authInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServe
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
 
-	// Добавляем claims в контекст для использования в обработчиках
 	ctx = context.WithValue(ctx, "claims", claims)
-
 	return handler(ctx, req)
+}
+
+func main() {
+	cfg := config.Load()
+	auth.Init(cfg.JWTUserSecret, cfg.JWTAdminSecret)
+
+	if err := storage.Init(cfg.DBPath); err != nil {
+		log.Fatalf("Failed to init storage: %v", err)
+	}
+	defer storage.Close()
+
+	lis, err := net.Listen("tcp", ":"+cfg.ServerPort)
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	srv := grpc.NewServer(
+		grpc.UnaryInterceptor(authInterceptor),
+	)
+	rpc.RegisterAdminServiceServer(srv, &server{config: cfg})
+
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
+		<-sigint
+		log.Println("Shutting down server...")
+		srv.GracefulStop()
+	}()
+
+	log.Printf("Server started on port %s", cfg.ServerPort)
+	if err := srv.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
 }

@@ -489,6 +489,50 @@ func (x *Response) GetToken() string {
 	return ""
 }
 
+type SessionStatus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsActive      bool                   `protobuf:"varint,1,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SessionStatus) Reset() {
+	*x = SessionStatus{}
+	mi := &file_pkg_rpc_admin_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SessionStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionStatus) ProtoMessage() {}
+
+func (x *SessionStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionStatus.ProtoReflect.Descriptor instead.
+func (*SessionStatus) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SessionStatus) GetIsActive() bool {
+	if x != nil {
+		return x.IsActive
+	}
+	return false
+}
+
 var File_pkg_rpc_admin_proto protoreflect.FileDescriptor
 
 const file_pkg_rpc_admin_proto_rawDesc = "" +
@@ -522,7 +566,9 @@ const file_pkg_rpc_admin_proto_rawDesc = "" +
 	"\bResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x14\n" +
-	"\x05token\x18\x03 \x01(\tR\x05token2\xb3\x02\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token\",\n" +
+	"\rSessionStatus\x12\x1b\n" +
+	"\tis_active\x18\x01 \x01(\bR\bisActive2\xe9\x02\n" +
 	"\fAdminService\x12/\n" +
 	"\vGrantAccess\x12\x11.rpc.GrantRequest\x1a\r.rpc.Response\x12.\n" +
 	"\x05Login\x12\x11.rpc.LoginRequest\x1a\x12.rpc.LoginResponse\x12'\n" +
@@ -530,7 +576,8 @@ const file_pkg_rpc_admin_proto_rawDesc = "" +
 	"\bUnlockPC\x12\x0e.rpc.PCRequest\x1a\r.rpc.Response\x126\n" +
 	"\x10TerminateSession\x12\x13.rpc.SessionRequest\x1a\r.rpc.Response\x126\n" +
 	"\x11GetActiveSessions\x12\n" +
-	".rpc.Empty\x1a\x15.rpc.SessionsResponseB%Z#github.com/Glack134/pc_club/pkg/rpcb\x06proto3"
+	".rpc.Empty\x1a\x15.rpc.SessionsResponse\x124\n" +
+	"\x0eCheckPCSession\x12\x0e.rpc.PCRequest\x1a\x12.rpc.SessionStatusB%Z#github.com/Glack134/pc_club/pkg/rpcb\x06proto3"
 
 var (
 	file_pkg_rpc_admin_proto_rawDescOnce sync.Once
@@ -544,7 +591,7 @@ func file_pkg_rpc_admin_proto_rawDescGZIP() []byte {
 	return file_pkg_rpc_admin_proto_rawDescData
 }
 
-var file_pkg_rpc_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_pkg_rpc_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_pkg_rpc_admin_proto_goTypes = []any{
 	(*GrantRequest)(nil),     // 0: rpc.GrantRequest
 	(*LoginRequest)(nil),     // 1: rpc.LoginRequest
@@ -555,6 +602,7 @@ var file_pkg_rpc_admin_proto_goTypes = []any{
 	(*Session)(nil),          // 6: rpc.Session
 	(*LoginResponse)(nil),    // 7: rpc.LoginResponse
 	(*Response)(nil),         // 8: rpc.Response
+	(*SessionStatus)(nil),    // 9: rpc.SessionStatus
 }
 var file_pkg_rpc_admin_proto_depIdxs = []int32{
 	6, // 0: rpc.SessionsResponse.sessions:type_name -> rpc.Session
@@ -564,14 +612,16 @@ var file_pkg_rpc_admin_proto_depIdxs = []int32{
 	2, // 4: rpc.AdminService.UnlockPC:input_type -> rpc.PCRequest
 	3, // 5: rpc.AdminService.TerminateSession:input_type -> rpc.SessionRequest
 	4, // 6: rpc.AdminService.GetActiveSessions:input_type -> rpc.Empty
-	8, // 7: rpc.AdminService.GrantAccess:output_type -> rpc.Response
-	7, // 8: rpc.AdminService.Login:output_type -> rpc.LoginResponse
-	8, // 9: rpc.AdminService.LockPC:output_type -> rpc.Response
-	8, // 10: rpc.AdminService.UnlockPC:output_type -> rpc.Response
-	8, // 11: rpc.AdminService.TerminateSession:output_type -> rpc.Response
-	5, // 12: rpc.AdminService.GetActiveSessions:output_type -> rpc.SessionsResponse
-	7, // [7:13] is the sub-list for method output_type
-	1, // [1:7] is the sub-list for method input_type
+	2, // 7: rpc.AdminService.CheckPCSession:input_type -> rpc.PCRequest
+	8, // 8: rpc.AdminService.GrantAccess:output_type -> rpc.Response
+	7, // 9: rpc.AdminService.Login:output_type -> rpc.LoginResponse
+	8, // 10: rpc.AdminService.LockPC:output_type -> rpc.Response
+	8, // 11: rpc.AdminService.UnlockPC:output_type -> rpc.Response
+	8, // 12: rpc.AdminService.TerminateSession:output_type -> rpc.Response
+	5, // 13: rpc.AdminService.GetActiveSessions:output_type -> rpc.SessionsResponse
+	9, // 14: rpc.AdminService.CheckPCSession:output_type -> rpc.SessionStatus
+	8, // [8:15] is the sub-list for method output_type
+	1, // [1:8] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -588,7 +638,7 @@ func file_pkg_rpc_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_rpc_admin_proto_rawDesc), len(file_pkg_rpc_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
