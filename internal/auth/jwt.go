@@ -8,7 +8,7 @@ import (
 
 var (
 	secretKey []byte
-	adminKey  []byte // Отдельный ключ для админов
+	adminKey  []byte
 )
 
 type Claims struct {

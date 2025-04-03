@@ -178,28 +178,26 @@ func (s *server) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginRe
 
 // В методе GrantAccess
 func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {
-	// Проверка прав админа
 	claims, ok := ctx.Value("claims").(*auth.Claims)
 	if !ok || !claims.IsAdmin {
 		return nil, status.Error(codes.PermissionDenied, "admin access required")
 	}
 
-	// Генерация пользовательского токена
+	sessionID, err := storage.CreateSession(req.UserId, req.PcId, time.Duration(req.Minutes)*time.Minute)
+	if err != nil {
+		log.Printf("Failed to create session (ID: %s): %v", sessionID, err)
+		return nil, status.Error(codes.Internal, "failed to create session")
+	}
+
 	userToken, err := auth.GenerateToken(req.UserId, false, req.PcId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate user token")
 	}
 
-	// Сохранение сессии
-	sessionID, err := storage.CreateSession(req.UserId, req.PcId, time.Duration(req.Minutes)*time.Minute)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to create session")
-	}
-
 	return &rpc.Response{
 		Success: true,
 		Message: "Access granted",
-		Token:   userToken, // Отправляем токен клиенту
+		Token:   userToken,
 	}, nil
 }
 
@@ -208,7 +206,7 @@ func main() {
 	cfg := config.Load()
 
 	// Инициализация секретного ключа для JWT
-	auth.SetSecretKey(cfg.JWTSecret)
+	auth.Init(cfg.JWTUserSecret, cfg.JWTAdminSecret)
 
 	// Инициализация БД
 	if err := storage.Init(cfg.DBPath); err != nil {

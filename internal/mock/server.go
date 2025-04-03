@@ -17,7 +17,7 @@ type MockServer struct {
 
 func (s *MockServer) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResponse, error) {
 	if req.Username == "admin" && req.Password == "admin" {
-		token, err := auth.GenerateToken("admin", true)
+		token, err := auth.GenerateToken("admin", true, "")
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to generate token")
 		}

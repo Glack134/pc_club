@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"time"
 
-	"fyne.io/fyne/app"
-	"fyne.io/fyne/container"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/Glack134/pc_club/internal/auth"
@@ -96,39 +96,18 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func main() {
-	config := loadConfig()
+func hasActiveSession(client rpc.AdminServiceClient, pcID string) bool {
+	resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
+	if err != nil {
+		return false
+	}
 
-	// При запуске проверяем токен из конфига
-	if config.AuthToken != "" {
-		claims, err := auth.ValidateToken(config.AuthToken)
-		if err == nil && claims.PCID == config.PcID {
-			unlockPC()
-			showSessionUI()
-			return
+	for _, s := range resp.Sessions {
+		if s.PcId == pcID && s.ExpiresAt > time.Now().Unix() {
+			return true
 		}
 	}
-
-	conn, err := grpc.Dial(config.ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("gRPC connection failed: %v", err)
-	}
-	defer conn.Close()
-
-	grpcClient := rpc.NewAdminServiceClient(conn)
-
-	// Проверка активной сессии
-	if hasActiveSession(grpcClient, config.PcID) {
-		unlockPC() // Разблокируем PC если есть активная сессия
-		showSessionUI(grpcClient, config)
-	} else {
-		lockScreen := client.NewLockScreen(config.PcID)
-		lockScreen.SetUnlockCallback(func() {
-			unlockPC()
-			showSessionUI(grpcClient, config)
-		})
-		lockScreen.Run()
-	}
+	return false
 }
 
 func unlockPC() {
@@ -141,6 +120,19 @@ func unlockPC() {
 	}
 	if err := cmd.Run(); err != nil {
 		log.Printf("Failed to unlock PC: %v", err)
+	}
+}
+
+func lockPC() {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
+	case "linux":
+		cmd = exec.Command("loginctl", "lock-session")
+	}
+	if err := cmd.Run(); err != nil {
+		log.Printf("Failed to lock PC: %v", err)
 	}
 }
 
@@ -168,27 +160,55 @@ func showSessionUI(client rpc.AdminServiceClient, config *Config) {
 		}
 	}()
 
-	w.SetContent(container.NewCenter(
-		container.NewVBox(
-			timeLabel,
-			widget.NewButton("Lock Now", func() {
-				lockPC()
-				w.Close()
-			}),
-		),
+	w.SetContent(container.NewVBox(
+		timeLabel,
+		widget.NewButton("Lock Now", func() {
+			lockPC()
+			w.Close()
+		}),
 	))
-	w.Show()
+	w.ShowAndRun()
 }
 
-func lockPC() {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
-	case "linux":
-		cmd = exec.Command("loginctl", "lock-session")
+func main() {
+	config, err := loadConfig()
+	if err != nil {
+		log.Fatalf("Config initialization failed: %v", err)
 	}
-	if err := cmd.Run(); err != nil {
-		log.Printf("Failed to lock PC: %v", err)
+
+	// При запуске проверяем токен из конфига
+	if config.AuthToken != "" {
+		claims, err := auth.ValidateToken(config.AuthToken)
+		if err == nil && claims.PCID == config.PcID {
+			unlockPC()
+			conn, err := createGRPCConnection(config.ServerAddress)
+			if err != nil {
+				log.Fatalf("gRPC connection failed: %v", err)
+			}
+			defer conn.Close()
+			showSessionUI(rpc.NewAdminServiceClient(conn), config)
+			return
+		}
+	}
+
+	conn, err := createGRPCConnection(config.ServerAddress)
+	if err != nil {
+		log.Fatalf("gRPC connection failed: %v", err)
+	}
+	defer conn.Close()
+
+	grpcClient := rpc.NewAdminServiceClient(conn)
+
+	// Проверка активной сессии
+	if hasActiveSession(grpcClient, config.PcID) {
+		unlockPC()
+		showSessionUI(grpcClient, config)
+	} else {
+		lockScreen := client.NewLockScreen(config.PcID)
+		lockScreen.SetUnlockCallback(func() {
+			unlockPC()
+			showSessionUI(grpcClient, config)
+		})
+		lockScreen.Run()
 	}
 }
