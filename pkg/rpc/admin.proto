@@ -43,12 +43,14 @@ message Session {
     int64 expires_at = 4;
 }
 
-message Response {
-    bool success = 1;
-    string message = 2;
-}
-
 message LoginResponse {
     string token = 1;
     bool success = 2;
+    bool is_admin = 3;
+}
+
+message Response {
+    bool success = 1;
+    string message = 2;
+    string token = 3;
 }

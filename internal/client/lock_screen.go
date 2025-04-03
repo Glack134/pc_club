@@ -8,62 +8,59 @@ import (
 )
 
 type LockScreen struct {
-	Window    fyne.Window // Сделали поле экспортируемым (с большой буквы)
-	onUnlock  func()
-	adminMode bool
+	Window       fyne.Window
+	OnUnlock     func()
+	pcID         string
+	adminLogin   *widget.Entry
+	adminPass    *widget.Entry
+	unlockButton *widget.Button
 }
 
-func NewLockScreen() *LockScreen {
+func NewLockScreen(pcID string) *LockScreen {
 	a := app.New()
-	w := a.NewWindow("PC Club - Locked")
+	w := a.NewWindow("PC Locked - " + pcID)
 	w.SetFullScreen(true)
 
 	return &LockScreen{
 		Window: w,
+		pcID:   pcID,
 	}
 }
 
 func (ls *LockScreen) Show() {
-	loginBtn := widget.NewButton("Admin Login", func() {
-		ls.showAdminAuth()
+	ls.adminLogin = widget.NewEntry()
+	ls.adminPass = widget.NewPasswordEntry()
+	ls.unlockButton = widget.NewButton("Unlock", func() {
+		if ls.OnUnlock != nil {
+			ls.OnUnlock()
+		}
 	})
 
-	message := widget.NewLabel("PC is locked. Please wait for admin authorization")
-	message.Alignment = fyne.TextAlignCenter
-
-	content := container.NewCenter(
-		container.NewVBox(
-			message,
-			loginBtn,
-		),
-	)
-
-	ls.Window.SetContent(content)
-	ls.Window.Show()
-}
-
-func (ls *LockScreen) showAdminAuth() {
-	username := widget.NewEntry()
-	password := widget.NewPasswordEntry()
-	form := widget.NewForm(
-		widget.NewFormItem("Username", username),
-		widget.NewFormItem("Password", password),
-	)
-
-	form.OnSubmit = func() {
-		if ls.authenticate(username.Text, password.Text) {
-			ls.onUnlock()
-		}
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Admin Login", Widget: ls.adminLogin},
+			{Text: "Password", Widget: ls.adminPass},
+		},
+		OnSubmit: func() {
+			ls.unlockButton.OnTapped()
+		},
 	}
 
-	ls.Window.SetContent(container.NewCenter(form))
-}
-
-func (ls *LockScreen) authenticate(user, pass string) bool {
-	// Реализация gRPC вызова к серверу
-	return true
+	ls.Window.SetContent(container.NewCenter(
+		container.NewVBox(
+			widget.NewLabel("PC is locked"),
+			widget.NewLabel("ID: "+ls.pcID),
+			form,
+			ls.unlockButton,
+		),
+	))
 }
 
 func (ls *LockScreen) SetUnlockCallback(callback func()) {
-	ls.onUnlock = callback
+	ls.OnUnlock = callback
+}
+
+func (ls *LockScreen) Run() {
+	ls.Show()
+	ls.Window.ShowAndRun()
 }

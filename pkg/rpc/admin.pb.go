@@ -369,17 +369,78 @@ func (x *Session) GetExpiresAt() int64 {
 	return 0
 }
 
+type LoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	IsAdmin       bool                   `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginResponse) Reset() {
+	*x = LoginResponse{}
+	mi := &file_pkg_rpc_admin_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginResponse) ProtoMessage() {}
+
+func (x *LoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
+func (*LoginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *LoginResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *LoginResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *LoginResponse) GetIsAdmin() bool {
+	if x != nil {
+		return x.IsAdmin
+	}
+	return false
+}
+
 type Response struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Token         string                 `protobuf:"bytes,3,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_pkg_rpc_admin_proto_msgTypes[7]
+	mi := &file_pkg_rpc_admin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -391,7 +452,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_proto_msgTypes[7]
+	mi := &file_pkg_rpc_admin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -404,7 +465,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{7}
+	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Response) GetSuccess() bool {
@@ -421,56 +482,11 @@ func (x *Response) GetMessage() string {
 	return ""
 }
 
-type LoginResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LoginResponse) Reset() {
-	*x = LoginResponse{}
-	mi := &file_pkg_rpc_admin_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LoginResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LoginResponse) ProtoMessage() {}
-
-func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
-func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *LoginResponse) GetToken() string {
+func (x *Response) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
 	return ""
-}
-
-func (x *LoginResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
 }
 
 var File_pkg_rpc_admin_proto protoreflect.FileDescriptor
@@ -498,13 +514,15 @@ const file_pkg_rpc_admin_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x13\n" +
 	"\x05pc_id\x18\x03 \x01(\tR\x04pcId\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\x04 \x01(\x03R\texpiresAt\">\n" +
-	"\bResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"?\n" +
+	"expires_at\x18\x04 \x01(\x03R\texpiresAt\"Z\n" +
 	"\rLoginResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess2\xb3\x02\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x19\n" +
+	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\"T\n" +
+	"\bResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x14\n" +
+	"\x05token\x18\x03 \x01(\tR\x05token2\xb3\x02\n" +
 	"\fAdminService\x12/\n" +
 	"\vGrantAccess\x12\x11.rpc.GrantRequest\x1a\r.rpc.Response\x12.\n" +
 	"\x05Login\x12\x11.rpc.LoginRequest\x1a\x12.rpc.LoginResponse\x12'\n" +
@@ -535,8 +553,8 @@ var file_pkg_rpc_admin_proto_goTypes = []any{
 	(*Empty)(nil),            // 4: rpc.Empty
 	(*SessionsResponse)(nil), // 5: rpc.SessionsResponse
 	(*Session)(nil),          // 6: rpc.Session
-	(*Response)(nil),         // 7: rpc.Response
-	(*LoginResponse)(nil),    // 8: rpc.LoginResponse
+	(*LoginResponse)(nil),    // 7: rpc.LoginResponse
+	(*Response)(nil),         // 8: rpc.Response
 }
 var file_pkg_rpc_admin_proto_depIdxs = []int32{
 	6, // 0: rpc.SessionsResponse.sessions:type_name -> rpc.Session
@@ -546,11 +564,11 @@ var file_pkg_rpc_admin_proto_depIdxs = []int32{
 	2, // 4: rpc.AdminService.UnlockPC:input_type -> rpc.PCRequest
 	3, // 5: rpc.AdminService.TerminateSession:input_type -> rpc.SessionRequest
 	4, // 6: rpc.AdminService.GetActiveSessions:input_type -> rpc.Empty
-	7, // 7: rpc.AdminService.GrantAccess:output_type -> rpc.Response
-	8, // 8: rpc.AdminService.Login:output_type -> rpc.LoginResponse
-	7, // 9: rpc.AdminService.LockPC:output_type -> rpc.Response
-	7, // 10: rpc.AdminService.UnlockPC:output_type -> rpc.Response
-	7, // 11: rpc.AdminService.TerminateSession:output_type -> rpc.Response
+	8, // 7: rpc.AdminService.GrantAccess:output_type -> rpc.Response
+	7, // 8: rpc.AdminService.Login:output_type -> rpc.LoginResponse
+	8, // 9: rpc.AdminService.LockPC:output_type -> rpc.Response
+	8, // 10: rpc.AdminService.UnlockPC:output_type -> rpc.Response
+	8, // 11: rpc.AdminService.TerminateSession:output_type -> rpc.Response
 	5, // 12: rpc.AdminService.GetActiveSessions:output_type -> rpc.SessionsResponse
 	7, // [7:13] is the sub-list for method output_type
 	1, // [1:7] is the sub-list for method input_type

@@ -153,33 +153,7 @@ func (s *server) GetActiveSessions(ctx context.Context, _ *rpc.Empty) (*rpc.Sess
 	return &rpc.SessionsResponse{Sessions: pbSessions}, nil
 }
 
-func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {
-	// Claims уже проверены в interceptor, просто получаем их
-	claims, ok := ctx.Value("claims").(*auth.Claims)
-	if !ok {
-		return nil, status.Error(codes.Internal, "failed to get auth claims")
-	}
-
-	if !claims.IsAdmin {
-		return nil, status.Error(codes.PermissionDenied, "admin access required")
-	}
-
-	// 2. Создание сессии
-	sessionID, err := storage.CreateSession(req.UserId, req.PcId, time.Duration(req.Minutes)*time.Minute)
-	if err != nil {
-		log.Printf("Failed to create session: %v", err)
-		return nil, status.Error(codes.Internal, "failed to create session")
-	}
-
-	log.Printf("Access granted. Session: %s, User: %s, PC: %s, Duration: %d mins",
-		sessionID, req.UserId, req.PcId, req.Minutes)
-
-	return &rpc.Response{
-		Success: true,
-		Message: "Access granted successfully",
-	}, nil
-}
-
+// В методе Login
 func (s *server) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResponse, error) {
 	user, err := storage.GetUserByUsername(req.Username)
 	if err != nil {
@@ -190,7 +164,7 @@ func (s *server) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginRe
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
-	token, err := auth.GenerateToken(user.ID, user.IsAdmin)
+	token, err := auth.GenerateToken(user.ID, user.IsAdmin, "")
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -198,6 +172,34 @@ func (s *server) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginRe
 	return &rpc.LoginResponse{
 		Token:   token,
 		Success: true,
+		IsAdmin: user.IsAdmin,
+	}, nil
+}
+
+// В методе GrantAccess
+func (s *server) GrantAccess(ctx context.Context, req *rpc.GrantRequest) (*rpc.Response, error) {
+	// Проверка прав админа
+	claims, ok := ctx.Value("claims").(*auth.Claims)
+	if !ok || !claims.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	// Генерация пользовательского токена
+	userToken, err := auth.GenerateToken(req.UserId, false, req.PcId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to generate user token")
+	}
+
+	// Сохранение сессии
+	sessionID, err := storage.CreateSession(req.UserId, req.PcId, time.Duration(req.Minutes)*time.Minute)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to create session")
+	}
+
+	return &rpc.Response{
+		Success: true,
+		Message: "Access granted",
+		Token:   userToken, // Отправляем токен клиенту
 	}, nil
 }
 

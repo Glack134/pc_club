@@ -5,13 +5,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
+	"fyne.io/fyne/app"
+	"fyne.io/fyne/container"
+	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/widget"
+	"github.com/Glack134/pc_club/internal/auth"
+	"github.com/Glack134/pc_club/internal/client"
 	"github.com/Glack134/pc_club/pkg/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	"gopkg.in/ini.v1"
 )
 
@@ -90,35 +97,98 @@ func createGRPCConnection(address string) (*grpc.ClientConn, error) {
 }
 
 func main() {
-	config, err := loadConfig()
-	if err != nil {
-		log.Fatalf("Config initialization failed: %v", err)
+	config := loadConfig()
+
+	// При запуске проверяем токен из конфига
+	if config.AuthToken != "" {
+		claims, err := auth.ValidateToken(config.AuthToken)
+		if err == nil && claims.PCID == config.PcID {
+			unlockPC()
+			showSessionUI()
+			return
+		}
 	}
 
-	conn, err := createGRPCConnection(config.ServerAddress)
+	conn, err := grpc.Dial(config.ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("gRPC connection failed: %v", err)
 	}
 	defer conn.Close()
 
-	client := rpc.NewAdminServiceClient(conn)
+	grpcClient := rpc.NewAdminServiceClient(conn)
 
-	// Добавляем токен в метаданные
-	md := metadata.Pairs("authorization", "Bearer "+config.AuthToken)
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// Выполняем gRPC вызов
-	resp, err := client.GrantAccess(ctx, &rpc.GrantRequest{
-		UserId:  "test-user",
-		PcId:    config.PcID,
-		Minutes: 60,
-	})
-	if err != nil {
-		log.Fatalf("RPC call failed: %v", err)
+	// Проверка активной сессии
+	if hasActiveSession(grpcClient, config.PcID) {
+		unlockPC() // Разблокируем PC если есть активная сессия
+		showSessionUI(grpcClient, config)
+	} else {
+		lockScreen := client.NewLockScreen(config.PcID)
+		lockScreen.SetUnlockCallback(func() {
+			unlockPC()
+			showSessionUI(grpcClient, config)
+		})
+		lockScreen.Run()
 	}
+}
 
-	log.Printf("Server response: %s", resp.Message)
+func unlockPC() {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
+	case "linux":
+		cmd = exec.Command("xdg-open", "steam://")
+	}
+	if err := cmd.Run(); err != nil {
+		log.Printf("Failed to unlock PC: %v", err)
+	}
+}
+
+func showSessionUI(client rpc.AdminServiceClient, config *Config) {
+	a := app.New()
+	w := a.NewWindow("PC Club - " + config.PcID)
+	w.SetFullScreen(true)
+
+	timeLeft := binding.NewString()
+	timeLabel := widget.NewLabelWithData(timeLeft)
+
+	// Обновление времени
+	go func() {
+		for {
+			resp, err := client.GetActiveSessions(context.Background(), &rpc.Empty{})
+			if err == nil {
+				for _, s := range resp.Sessions {
+					if s.PcId == config.PcID {
+						remaining := time.Until(time.Unix(s.ExpiresAt, 0))
+						timeLeft.Set(fmt.Sprintf("Time left: %v", remaining.Round(time.Second)))
+					}
+				}
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	w.SetContent(container.NewCenter(
+		container.NewVBox(
+			timeLabel,
+			widget.NewButton("Lock Now", func() {
+				lockPC()
+				w.Close()
+			}),
+		),
+	))
+	w.Show()
+}
+
+func lockPC() {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32.exe", "user32.dll,LockWorkStation")
+	case "linux":
+		cmd = exec.Command("loginctl", "lock-session")
+	}
+	if err := cmd.Run(); err != nil {
+		log.Printf("Failed to lock PC: %v", err)
+	}
 }
