@@ -1,0 +1,11 @@
+/bin/
+*.db
+*.log
+*.key
+*.crt
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+/node_modules/
+/web/admin/static/bundle.js

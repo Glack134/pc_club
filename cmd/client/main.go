@@ -3,23 +3,31 @@ package client
 import (
 	"context"
 	"log"
+
+	"github.com/Glack134/pc_club/internal/app/client"
+	"github.com/Glack134/pc_club/pkg/config"
+	"github.com/Glack134/pc_club/pkg/logger"
 )
 
 func main() {
+	// Загрузка конфигурации
 	cfg, err := config.LoadClientConfig("configs/client.yaml")
 	if err != nil {
-		log.Fatal("Failed to load config: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	logger := logger.New(cfg.LogLevel)
+	// Инициализация логгера
+	log := logger.New(cfg.LogLevel)
 
-	pcClient, err := client.NewPcClubClient(logger, cfg)
+	// Создание клиента
+	pcClient, err := client.NewPcClubClient(log, cfg)
 	if err != nil {
-		logger.Fatal("Failed to create client", "error", err)
+		log.Fatal("Failed to create client")
 	}
 
+	// Запуск основных компонентов
 	ctx := context.Background()
 	if err := pcClient.Run(ctx); err != nil {
-		logger.Fatal("Client error", "error", err)
+		log.Fatal("Client error")
 	}
 }

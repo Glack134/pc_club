@@ -1,0 +1,11 @@
+server_addr: "localhost:50051"
+pc_id: "PC-01"
+log_level: "info"
+
+lock:
+  check_interval: "5s"
+
+monitoring:
+  report_interval: "10s"
+  max_cpu_usage: 90
+  max_gpu_usage: 95

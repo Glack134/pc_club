@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package admin;
+
+option go_package = "pcclub-system/pkg/rpc/admin";
+
+service AdminService {
+  rpc GetPcStatus (PcStatusRequest) returns (PcStatusResponse);
+  rpc LockPc (LockPcRequest) returns (LockPcResponse);
+  rpc UnlockPc (UnlockPcRequest) returns (UnlockPcResponse);
+  rpc StartProgram (StartProgramRequest) returns (StartProgramResponse);
+  rpc StopProgram (StopProgramRequest) returns (StopProgramResponse);
+}
+
+message PcStatusRequest {
+  string pc_id = 1;
+}
+
+message PcStatusResponse {
+  string pc_id = 1;
+  bool is_locked = 2;
+  double cpu_usage = 3;
+  double ram_usage = 4;
+  repeated string running_programs = 5;
+}
+
+message LockPcRequest {
+  string pc_id = 1;
+}
+
+message LockPcResponse {
+  bool success = 1;
+}
+
+message UnlockPcRequest {
+  string pc_id = 1;
+  string admin_token = 2;
+}
+
+message UnlockPcResponse {
+  bool success = 1;
+}
+
+message StartProgramRequest {
+  string pc_id = 1;
+  string program_path = 2;
+}
+
+message StartProgramResponse {
+  bool success = 1;
+}
+
+message StopProgramRequest {
+  string pc_id = 1;
+  string program_name = 2;
+}
+
+message StopProgramResponse {
+  bool success = 1;
+}

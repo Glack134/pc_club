@@ -1,37 +1,50 @@
-package server
+package main
 
 import (
 	"log"
 	"net"
 
+	"github.com/Glack134/pc_club/internal/app/server"
+	"github.com/Glack134/pc_club/internal/storage/sqlite"
+	"github.com/Glack134/pc_club/pkg/config"
+	"github.com/Glack134/pc_club/pkg/logger"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	cfg, err := config.LoadServerConfig("config/server.yaml")
+	// Загрузка конфигурации
+	cfg, err := config.LoadServerConfig("configs/server.yaml")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	logger := logger.New(cfg.LogLevel)
+	// Инициализация логгера
+	log := logger.New(cfg.LogLevel) // Переименовали переменную в log
 
-	storage, err := server.NewStorage(cfg.Database)
+	// Инициализация хранилища
+	storage, err := sqlite.NewStorage(cfg.Database.DSN)
 	if err != nil {
-		logger.Fatal("Failed to initialize storage", "error", err)
+		log.Fatal("Failed to initialize storage", logger.Field{Key: "error", Value: err})
 	}
 
+	// Создание gRPC сервера
 	grpcServer := grpc.NewServer()
-	server := server.NewPcClubServer(logger, storage, cfg)
+	srv := server.NewPcClubServer(log, storage)
 
-	server.RegisterServices(grpcServer)
+	// Регистрация сервисов
+	srv.RegisterServices(grpcServer)
 
+	// Запуск сервера
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
-		logger.Fatal("Failed to listen", "address", cfg.GRPCAddr, "error", err)
+		log.Fatal("Failed to listen",
+			logger.Field{Key: "address", Value: cfg.GRPCAddr},
+			logger.Field{Key: "error", Value: err},
+		)
 	}
 
-	logger.Info("Server started", "address", cfg.GRPCAddr)
+	log.Info("Server started", logger.Field{Key: "address", Value: cfg.GRPCAddr})
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Fatal("Failed to serve", "error", err)
+		log.Fatal("Failed to serve", logger.Field{Key: "error", Value: err})
 	}
 }
